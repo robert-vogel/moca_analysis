@@ -5,13 +5,11 @@
 #
 python mkplots.py \
     --seed 3241345 \
-    --stratified_cv \
     "data/dream_2_bcl6_challenge.csv"
 
 
 python mkplots.py \
     --seed 454326 \
-    --stratified_cv \
     "data/dream_9_5-prostate_cancer.csv"
 
 # Run data cond independent simulation data
@@ -27,7 +25,6 @@ python mk_sim_data.py \
 
 python mkplots.py \
     --seed 324132315 \
-    --stratified_cv \
     "data/simulate_cond_independent.csv"
 
 
@@ -43,5 +40,4 @@ python mk_sim_data.py \
 
 python mkplots.py \
     --seed 320798562315 \
-    --stratified_cv \
     "data/simulate_cond_dependent.csv"

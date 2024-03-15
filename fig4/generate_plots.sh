@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 
 
-# Run Umoca analysis on DREAM data
-#
-
 random_seed=3241345
 
 for fname in $(ls data/*.csv); do
-    echo "$fname"
-    echo""
-    python mkplots.py \
+    printf "%s\n" "Cross-validation AUC computation: $fname"
+
+    python statistical_analyses.py \
         --seed  "$random_seed" \
-        --stratified_cv \
+        -o "out" \
+        --kfolds 5 \
         "$fname"
-    echo ""
 
     random_seed=$((random_seed + 10))
 done
+
+
+# ls "stat_analysis/*.csv" | xargs python mkplots.py -o plots
