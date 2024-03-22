@@ -6,24 +6,25 @@
 The data consists of thumbnails, smaller than full image,
 of skin features.  These skin features are classified as
 benign or malignant, i.e. a binary classification problem.
-We are not trying to make a state-of-the art diagnostic tool,
+This is not a state-of-the art diagnostic tool,
 instead we are showing the usefulness of combining predictions
 from arbitraily complex data and models.  This model cannot
-be used to classify skin features in general, only to be
-used in this simple, demonstration of concept, example.
+be used to classify skin features in general or a 
+clinical setting, only to be
+used in this simple demonstration.
 Here we download 3 collections from the ISIC-archive
 https://api.isic-archive.com/images/
 
-* MSK1, collection id = 289
-    - 1,678 images where diagnoses are either
+* MSK-1, collection id = 289
+    - 1,678 thumbnail images where diagnoses are either
         confirmed by histopathology and / or "clinical follow-up".
-* MSK2, collection id = 290
-    - 4,880 biopsy confirmed images
+* MSK-2, collection id = 290
+    - 4,880 biopsy confirmed thumbnail images
 * MSK-4, collection id = 287
-    - 2,050 images with diagnoses confirmed by histopathology
+    - 2,050 thumbnail images with diagnoses confirmed by histopathology
 
-These data were downloaded using the `download_collections.py` script
-by:
+These data were downloaded using the `download_collections.py` script.
+Command line arguments
 
 ```bash
 python download_collections.py --dir imgs_train 289
@@ -31,7 +32,7 @@ python download_collections.py --dir imgs_train 290
 python download_collections.py --dir imgs_validate 287
 ```
 
-Next I checked that the images are:
+Next I checked that the thumbnail images are:
 
     * License "CC-0", public domain
     * nonempty benign_malignant_field
