@@ -4,14 +4,9 @@
 By: Robert Vogel
 
 
-Apply Umoca, wisdom-of-crowds, best individual, and
-gaussian mixture model (GMM), Smoca, and 
-LDA to data specified that
-conforms to the data table specification
-
-
-DATA TABLE SPECIFICATION
-
+Apply Umoca, wisdom-of-crowds, best individual, 
+and Smoca, to data that
+conforms to the data 
 """
 
 import sys
@@ -79,8 +74,7 @@ def main(filename, seed, kfolds, out_dir):
                           tol=utils.UMOCA_TOL),
                 cls.Smoca(),
                 cls.BestBC(),
-                cls.Woc(),
-                utils.Lda()]
+                cls.Woc()]
 
     auc, cl_labels = utils.auc_by_stratified_cv(data, labels,
                                                 moca_cls,
@@ -93,7 +87,7 @@ def main(filename, seed, kfolds, out_dir):
         out_dir = ""
 
     with open(os.path.join(out_dir, 
-                           f"{savename[0]}_auc.csv"),
+                           f"{savename[0]}.csv"),
               "w") as fid:
         #header
         fid.write(','.join(["k_folds",*cl_labels]))

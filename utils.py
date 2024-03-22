@@ -23,28 +23,6 @@ UMOCA_MAX_ITER=20000
 UMOCA_TOL=1e-4
 
 
-class Lda(cls.MocaABC):
-
-    is_supervised = True
-
-    def __init__(self):
-        super().__init__()
-
-        self._lda = LinearDiscriminantAnalysis(solver='lsqr',
-                                               shrinkage='auto')
-
-    def fit(self, data, labels):
-        self.M = data.shape[0]
-        self.prevalence = np.mean(labels)
-        self._lda.fit(data.T, labels)
-
-    def get_scores(self, data):
-        if not stats.is_rank(data):
-            raise ValueError
-
-        return self._lda.decision_function(data.T)
-        
-
 
 class Gmm(cls.MocaABC):
 
@@ -227,6 +205,112 @@ def read_data(fname, method_regex,
             sample_idx += 1
 
     return X, y, cls_names
+
+
+def read_cross_validation_file(fname, row_idx_regex="k_folds",
+              datum_regex="^[+-]?[0-9]*\.?[0-9]*E?e?[+-]?[0-9]*$"):
+    """Load data under the assumed specification.
+
+    Stat file specification:
+
+        comma delimited text file as follows
+
+        Line 1: header labels:
+            * k_folds
+                interger marking each fold change in data.  Note that
+                row labels are meaningless, that is k_folds=3 for
+                Umoca and Woc, does not compare there performance for
+                the same data.
+            * method identifier
+                the sample predictions of method in format of
+                method_regex.
+        Line 2-end
+            * arbirary fold,
+            * sample scores per team, or empty -> np.nan
+            * sample NaN -> np.nan
+            * sample class labels, 0 or 1
+
+    Args:
+        fname: (str)
+            name of file, including path, to be read
+        row_idx_regex: (str)
+            regular expression identifying the column of 
+            k_folds
+
+    Return:
+        X: ((n samples, m classifiers) np.ndarray)
+            Sample scores by each base classifier
+        y: ((n samples,) np.ndarray)
+            sample class labels, 0 and 1, representing the
+            negative and positive class labels, respectively. 
+        cls_names: (list)
+            classifier team names in order of data matrix
+    """
+    delim = ","
+
+
+    with open(fname, "r") as fid:
+
+        # Decompose header and get the number of samples
+        cls_names = []
+        score_col_idx = []
+
+        for i, tline in enumerate(fid):
+
+            if i > 0:
+                continue
+
+            tline = tline.strip().split(delim)
+
+            for j, field in enumerate(tline):
+
+                if field in cls_names:
+                    raise ValueError("Duplicate team names")
+
+                if re.match(row_idx_regex, field) is not None:
+                    continue
+
+                cls_names.append(field)
+                score_col_idx.append(j)
+
+
+            if (m_cls := len(score_col_idx)) == 0:
+                raise ValueError("Could not decompose header")
+
+        k_folds = i
+
+        X = np.zeros(shape=(k_folds, m_cls))
+
+        # return file object to the beginning of file
+        fid.seek(0, os.SEEK_SET)
+
+
+        k_fold = 0
+        for i, tline in enumerate(fid):
+            
+            if i == 0:
+                continue
+
+            tline = tline.strip().split(delim)
+
+            for j, cls_idx in enumerate(score_col_idx):
+                val = tline[cls_idx]
+
+                if val == "":
+                    X[k_fold, j] = np.nan
+                elif re.match(datum_regex, val) is not None:
+                    X[k_fold, j] = np.float64(val)
+                elif (re.match("^NaN$", val) is not None
+                      or val == ""):
+                    X[k_fold, j] = np.nan
+                else:
+                    raise ValueError(("Error while parsing"
+                                      f" file at line {i}"
+                                      f"\r {','.join(tline)}"))
+
+            k_fold += 1
+
+    return X, cls_names
 
 
 def auc_by_stratified_cv(data, labels, moca_cls, kfolds=5, seed=None):
