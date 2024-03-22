@@ -34,9 +34,9 @@ python download_collections.py --dir imgs_validate 287
 
 Next I checked that the thumbnail images are:
 
-    * License "CC-0", public domain
-    * benign_malignant field value is either benign or malignant
-    * image jpeg file exists
+* License "CC-0", public domain
+* benign_malignant field value is either benign or malignant
+* image jpeg file exists
 
 The `isic_id` of thumbnail images that satisfy these criteria
 are written to the file specified by the `-o` flag.  Otherwise,
