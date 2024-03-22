@@ -1,6 +1,6 @@
 # Scripts and process used
 
-*Note* This is not a state-of-the art diagnostic tool, or the optimal 
+**Note** This is not a state-of-the art diagnostic tool, or the optimal 
 training of each computer vision model.
 Instead we are showing the usefulness of combining predictions
 from arbitraily complex data and models.  This model cannot
@@ -89,17 +89,16 @@ command line as
 python format_img_dir_by_class.py --img_list data/train_set.tsv \
     --img_exclude_list data/excluded_train_images.tsv \
     --img_dir imgs_train
-
-python format_img_dir_by_class.py --img_list data/validate_set.tsv \
-    --img_exclude_list data/excluded_validate_images.tsv \
-    --img_dir imgs_validate
 ```
+
+For the validation set, I simply remove image files that do 
+not be our criteria for inclusion.
 
 
 ## Transfer learning training
 
 In applying the following models to this data set and our purpose
-we followed instructions Transfer Learning instructions published 
+we followed the Transfer Learning instructions published 
 in the 
 [TensorFlow](https://www.tensorflow.org/tutorials/images/transfer_learning)
 tutorials.  Parts of our code will match, or minor modifications,
