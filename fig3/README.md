@@ -9,17 +9,17 @@ To generate new plots run the bash script
 Note that the Gaussian Mixture Model (GMM) uses scikit-learn's
 implementation and assumes diagonal
 class conditioned covariance matrices, as this is the
-assumption as Umoca.
+assumption in Umoca.
 
-The score of sample \$k\$ from the GMM were computed by:
+The score \$s_k\$ of sample \$k\$ from the GMM was computed by:
 
 ```math
 s_k^{\text{GMM}} = \sum_{i=1}^M \bigg(\frac{1}{\sigma^2_{i|1}} - \frac{1}{\sigma^2_{i|0}}\bigg) r_{ik}^2
   + 2\bigg(\frac{\mu_{i|0}}{\sigma^2_{i|0}} - \frac{\mu_{i|1}}{\sigma^2_{i|1}}\bigg) r_{ik}
 ```
 
-where $i$ indexes over methods.  While \$\mu_{i|c}\$ and \$\sigma^2_{i|c}\$ for 
-\$c\$ class labels \$c\$ are simply the conditional mean and variant of method \$i\$.
+where $i$ indexes over methods.  While \$\mu_{i|c}\$ and \$\sigma^2_{i|c}\$ are
+the conditional statistics of method \$i\$ given class label \$c\$.
 This expression can be derived by Bayes' theorem and the Gaussian density function 
 \$f_{i|c}\$.
 
@@ -49,4 +49,4 @@ then, rearranging the terms we see that
 ```
 where the ratio of prior probabilities is not a function of a sample's 
 rank and consequently can be ignored.  By the Gaussian density function
-the score of \$k\$ is simply the first and second order terms written above.
+the sample score of \$s_k\$ is simply the first and second order terms written above.
