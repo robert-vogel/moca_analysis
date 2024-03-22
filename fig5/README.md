@@ -23,8 +23,8 @@ https://api.isic-archive.com/images/
 * MSK-4, collection id = 287
     - 2,050 thumbnail images with diagnoses confirmed by histopathology
 
-These data were downloaded using the `download_collections.py` script.
-Command line arguments
+These data were downloaded using the `download_collections.py` script,
+and ran from the command line by:
 
 ```bash
 python download_collections.py --dir imgs_train 289
@@ -35,15 +35,17 @@ python download_collections.py --dir imgs_validate 287
 Next I checked that the thumbnail images are:
 
     * License "CC-0", public domain
-    * nonempty benign_malignant_field
+    * benign_malignant field value is either benign or malignant
     * image jpeg file exists
 
-These images are all licensed under the creative commons
-license CC-0, that is they are all in the public domain.
+The `isic_id` of thumbnail images that satisfy these criteria
+are written to the file specified by the `-o` flag.  Otherwise,
+print the `isic_id` and reason first reason of failure to the
+standard out.
 
 ```bash
 for fname in $(ls imgs_train/*.json); do
-    python make_data_table.py -o data/train_set.csv \
+    python make_data_table.py -o data/train_set.tsv \
         --img_json $fname >> "data/exclude_train_images.tsv"
 done
 
