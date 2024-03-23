@@ -65,12 +65,9 @@ def main(filename, seed, kfolds, out_dir):
     data, labels, team_names = utils.read_data(filename,
                                                METHOD_REGEX)
 
-    print(data.shape)
-    
     # Perform statistical analyses
-    moca_cls = [cls.Umoca(max_iter=utils.UMOCA_MAX_ITER,
-                          tol=utils.UMOCA_TOL),
-                cls.Smoca(),
+    moca_cls = [cls.Smoca(),
+                cls.Smoca(subset_select=None),
                 cls.Woc()]
     moca_cls[2].is_supervised = True
 
