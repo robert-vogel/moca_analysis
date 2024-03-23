@@ -2,7 +2,7 @@
 
 
 random_seed=3241345
-cv_result_dir="out"
+cv_result_dir="stats_out"
 
 for fname in $(ls data/*.csv); do
     printf "%s\n" "Cross-validation AUC computation: $fname"
@@ -17,7 +17,7 @@ for fname in $(ls data/*.csv); do
 done
 
 
-ls "${cv_result_dir}/*.csv" | xargs \
-    python mkplots.py \
-    -o plots \
-    --statistic "AUC"
+# ls "${cv_result_dir}/*.csv" | xargs \
+#     python mkplots.py \
+#     -o plots \
+#     --statistic "AUC"

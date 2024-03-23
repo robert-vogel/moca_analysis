@@ -1,4 +1,4 @@
-"""Statistical analyses for figure 4
+"""Statistical analyses for figure 5
 
 
 By: Robert Vogel
@@ -25,7 +25,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__),
 import utils
 
 
-METHOD_REGEX = "^t?T?eam_[0-9]{2}$"
+METHOD_REGEX = "^m?M?odel_[0-9]$"
 
 # Set global parameters
 
@@ -71,9 +71,11 @@ def main(filename, seed, kfolds, out_dir):
     moca_cls = [cls.Umoca(max_iter=utils.UMOCA_MAX_ITER,
                           tol=utils.UMOCA_TOL),
                 cls.Smoca(),
-                cls.Woc(),
-                cls.BestBC(seed=rng)]
+                cls.Woc()]
     moca_cls[2].is_supervised = True
+
+    for i, _ in enumerate(team_names):
+        moca_cls.append(cls.BaseClassifier(i))
 
 
     auc, auc_labels = utils.performance_by_stratified_cv(data, labels,

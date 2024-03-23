@@ -97,13 +97,42 @@ not be our criteria for inclusion.
 
 ## Transfer learning training
 
-In applying the following models to this data set and our purpose
-we followed the Transfer Learning instructions published 
-in the 
-[TensorFlow](https://www.tensorflow.org/tutorials/images/transfer_learning)
-tutorials.  Parts of our code will match, or minor modifications,
-that in this tutorial created
+We followed 
+[TensorFlow's](https://www.tensorflow.org/tutorials/images/transfer_learning)
+tutorial on transfer learning.  Again, our purpose it not
+to train the optimal base classifiers, but to show that
+the aggregation of distinct classifiers increases performance.
+
+Elements of `transfer_learning.py` code contains
+code snippets, with and without modification,
+from the transfer learning tutorial created
 and shared by Google under the Apache 2.0 License.
+
+`transfer_learning.py` was run from the command line by
+
+```bash
+python transfer_learning.py \
+    --train_dir imgs_train \
+    --validate_dir imgs_validate \
+    --out_dir data \
+    --validate_set_metadata data/validate_set.tsv \
+    --seed 6283475
+```
+
+where `imgs_train` consisted of two directories, 'benign'
+and 'malignant' for which the respective images were located.
+TensorFlow provides tools for the automatic class assignments
+from such a directory structure.
+The validation set images were located in `imgs_train`.  I
+do not include the thumbnail image files, as these can be readily
+downloaded from the ISIC-archive.  The result of this program
+is the `data/prediction.csv` file contain the sample
+score of each image produced by each TensorFlow model.
+
+
+Training was done on each model for a single epoch.
+Training and validation set predictions takes
+approximately one hour on a laptop.
 
 
 ### `MobileNet`

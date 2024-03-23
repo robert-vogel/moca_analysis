@@ -16,13 +16,24 @@ from moca import cross_validate as cv
 from moca import stats
 
 from sklearn.mixture import GaussianMixture
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn import metrics
 
 
 UMOCA_MAX_ITER=20000
 UMOCA_TOL=1e-4
 
 
+def compute_auc(cl, test_data, test_labels):
+    return metrics.roc_auc_score(test_labels,
+                                 cl.get_scores(test_data))
+
+def compute_f1_score(cl, test_data, test_labels):
+    return metrics.f1_score(test_labels,
+                            cl.get_inference(test_data))
+
+def compute_ba(cl, test_data, test_labels):
+    return metrics.balanced_accuracy_score(test_labels,
+                                           cl.get_inference(test_data))
 
 class Gmm(cls.MocaABC):
 
@@ -313,7 +324,8 @@ def read_cross_validation_file(fname, row_idx_regex="k_folds",
     return X, cls_names
 
 
-def auc_by_stratified_cv(data, labels, moca_cls, kfolds=5, seed=None):
+def performance_by_stratified_cv(data, labels, moca_cls,
+                                 metric_func, kfolds=5, seed=None):
     """Compute AUC by stratified cross-validation
     
     Args:
@@ -324,17 +336,19 @@ def auc_by_stratified_cv(data, labels, moca_cls, kfolds=5, seed=None):
             negative and positive class labels, respectively. 
         moca_cls: (list)
             list of moca compatible classifier instances
+        metric_func: (function)
+           one of either:
+                - compute_auc,
+                - compute_f1_score,
+                - compute_ba
         kfolds: (int)
             number of folds for cross validations, > 0,
             default=5
-        stratified_cv: (bool)
-            if true, perform cross-validation such that the
-            sample class prevalence is, approximately, preserved.
         seed: (np.random.default_rng compatible seed)
             default None
 
     Returns:
-        auc:((k folds, n classifiers) np.ndarray)
+        performance: ((k folds, n classifiers) np.ndarray)
         cl_labels: (list)
             classifier labels for plotting.  In order of 
             columns in auc np.ndarray
@@ -343,7 +357,7 @@ def auc_by_stratified_cv(data, labels, moca_cls, kfolds=5, seed=None):
 
     cl_labels = []
 
-    auc = np.zeros(shape=(kfolds, len(moca_cls)))
+    performance = np.zeros(shape=(kfolds, len(moca_cls)))
 
     for i, cl in enumerate(moca_cls):
 
@@ -359,13 +373,12 @@ def auc_by_stratified_cv(data, labels, moca_cls, kfolds=5, seed=None):
             else:
                 cl.fit(train["data"])
 
-            _, _, auc[k, i] = stats.roc(cl.get_scores(test["data"]),
-                                        test["labels"])
+            performance[k,i] = metric_func(cl, test["data"], test["labels"])
+
             k += 1
 
-    cv_generator = cv.stratified_kfold(data, labels, kfolds, seed=rng)
 
-    return auc, cl_labels
+    return performance, cl_labels
     
 
 def cov2corr(c):

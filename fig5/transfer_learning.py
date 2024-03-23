@@ -18,49 +18,19 @@ and shared by Google under the Apache 2.0 License.
 import sys
 import os
 import argparse
+import glob
+import re
 import tensorflow as tf
 
 
 IMG_CHANS = 3
 IMG_PX_NUM = 128
 WEIGHTS = "imagenet"
-EPOCHS=1
 
 CLASS_ENCODING={
         "benign":"0",
         "malignant":"1"
         }
-
-def _parse_args(args):
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--train_dir",
-                        type=str,
-                        required=True,
-                        help="Path to directory containing training data.")
-    parser.add_argument("--validate_dir",
-                        type=str,
-                        required=True,
-                        help="Path to directory containing validation data.")
-
-    parser.add_argument("--validate_set_metadata",
-                        type=str,
-                        required=True,
-                        help=("Path to validation set images labels and"
-                              " class"))
-
-    parser.add_argument("--out_dir",
-                        type=str,
-                        required=True,
-                        help=("Path to directory in which validation"
-                              " scores are."))
-
-    parser.add_argument("--seed",
-                        type=int,
-                        default=42,
-                        help="Seed for random number generation.")
-    return parser.parse_args()
- 
 
 def mk_model(keras_base_model, base_model_preprocessing):
     """Make model with preprocessing and classification.
@@ -84,6 +54,8 @@ def mk_model(keras_base_model, base_model_preprocessing):
                                         include_top=False,
                                         weights=WEIGHTS)
 
+    keras_base_model.trainable=False
+
     # my custom layers
     resize = tf.keras.layers.Resizing(IMG_PX_NUM, IMG_PX_NUM)
 
@@ -94,7 +66,7 @@ def mk_model(keras_base_model, base_model_preprocessing):
         ])
 
     inference = tf.keras.Sequential([
-        tf.keras.layers.Flatten(),
+        tf.keras.layers.GlobalAveragePooling2D(),
         tf.keras.layers.Dense(1, activation="sigmoid")
         ])
 
@@ -113,36 +85,94 @@ def mk_model(keras_base_model, base_model_preprocessing):
     return base_model
 
 
+def progress_bar(iter_num, total_iters, total_chars=50):
+    frac = iter_num / total_iters
+    progress = int(total_chars * frac)
+    complement = total_chars - progress 
+
+    print_end = '\r'
+
+    if iter_num == total_iters:
+        print_end = "\n"
+
+    print(f"|{progress *'*'}{complement * '-'}| {frac:0.2f}",
+          end = print_end)
+
+
 def mk_models():
-    return [mk_model(tf.keras.applications.mobilenet.MobileNet,
-                     tf.keras.applications.mobilenet.preprocess_input),
-            mk_model(tf.keras.applications.inception_v3.InceptionV3,
-                     tf.keras.applications.inception_v3.preprocess_input),
-            mk_model(tf.keras.applications.resnet50.ResNet50,
-                     tf.keras.applications.resnet50.preprocess_input),
-            mk_model(tf.keras.applications.nasnet.NASNetMobile,
-                     tf.keras.applications.nasnet.preprocess_input),
-            mk_model(tf.keras.applications.vgg19.VGG19,
-                     tf.keras.applications.vgg19.preprocess_input),
-            mk_model(tf.keras.applications.xception.Xception,
-                     tf.keras.applications.xception.preprocess_input)]
+    models = {
+                "mobilenet": (tf.keras.applications.mobilenet.MobileNet,
+                            tf.keras.applications.mobilenet.preprocess_input),
+                "inception_v3": (tf.keras.applications.inception_v3.InceptionV3,
+                                tf.keras.applications.inception_v3.preprocess_input),
+                "resnet50": (tf.keras.applications.resnet50.ResNet50,
+                            tf.keras.applications.resnet50.preprocess_input),
+                "nasnet": (tf.keras.applications.nasnet.NASNetMobile,
+                            tf.keras.applications.nasnet.preprocess_input),
+                "vgg19": (tf.keras.applications.vgg19.VGG19,
+                            tf.keras.applications.vgg19.preprocess_input),
+                "xception" : (tf.keras.applications.xception.Xception,
+                            tf.keras.applications.xception.preprocess_input)
+            }
+
+    for key, val in models.items():
+        yield key, mk_model(*val)
 
 
-def main(args):
-    args = _parse_args(args)
-
+def _run_train(args):
     data = tf.keras.utils.image_dataset_from_directory(
             args.train_dir,
             labels="inferred",
             label_mode="binary",
             seed=args.seed)
 
-    models = mk_models()
+    ckpt_dir = "checkpoints"
+    for model_name, model in mk_models():
 
-    for model in models:
-        model.fit(data, epochs=EPOCHS)
+        if not os.path.exists(ckpt_dir):
+            os.mkdir(ckpt_dir)
 
-    with (open(os.path.join(args.out_dir, "predictions.csv"), "w") as fout,
+        ckpt_fname = os.path.join(ckpt_dir, f"cpkt_{model_name}.weights.h5")
+
+        ckpt_callback = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_fname,
+                                                         save_weights_only=True,
+                                                         verbose=1,
+                                                         save_freq="epoch")
+
+
+        model.fit(data,
+                  epochs=args.epochs,
+                  callbacks = [ckpt_callback])
+
+
+def _run_predict(args):
+    # load models and weights
+
+    model_file_names = glob.glob(os.path.join(args.ckpt_dir,
+                                              "*.h5"))
+
+    model_file_names.sort()
+
+    models = list(mk_models())
+
+    # checkpoint files have model name 
+    # embedded, therefore a simple search is sufficient
+
+    for model_file_name in model_file_names:
+        for mname, model in models:
+
+            if re.match(mname, model_file_name) is None:
+                continue
+
+            model.load_weights(model_file_name)
+            break
+
+    with open(args.validate_set_metadata, "r") as fin:
+        for total_lines, tline in enumerate(fin):
+            pass
+
+    with (open(os.path.join(args.out_dir,
+                f"sample_scores.csv"), "w") as fout,
           open(args.validate_set_metadata, "r") as fin):
 
         header = ["sample_id", "class"]
@@ -152,7 +182,8 @@ def main(args):
 
         fout.write(','.join(header))
 
-        for tline in fin:
+        for i, tline in enumerate(fin):
+            progress_bar(i, total_lines)
 
             tline = tline.strip()
             tline = tline.split('\t')
@@ -164,7 +195,7 @@ def main(args):
             img = tf.image.decode_jpeg(tf.io.read_file(img_fname))
             img = tf.reshape(img, (1, *img.shape))
 
-            for model in models:
+            for _, model in models:
                 tmp = model(img, training=False).numpy()
                 tline.append(str(tmp.squeeze()))
 
@@ -173,4 +204,54 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser()
+
+    subparsers = parser.add_subparsers(title="subcommands",
+                                       dest="subparser_name")
+
+    train_parser = subparsers.add_parser("train")
+
+    train_parser.add_argument("--train_dir",
+                        type=str,
+                        required=True,
+                        help="Path to directory containing training data.")
+    train_parser.add_argument("--seed",
+                        type=int,
+                        default=42,
+                        help="Seed for random number generation.")
+    train_parser.add_argument("--epochs",
+                               type=int,
+                               default=10,
+                               help="Number of epochs for training")
+
+
+    predict_parser = subparsers.add_parser("predict")
+    predict_parser.add_argument("--validate_dir",
+                        type=str,
+                        required=True,
+                        help="Path to directory containing validation data.")
+
+    predict_parser.add_argument("--validate_set_metadata",
+                        type=str,
+                        required=True,
+                        help=("Path to validation set images labels and"
+                              " class"))
+    predict_parser.add_argument("--ckpt_dir",
+                                type=str,
+                                required=True,
+                                help="path do directory of TensorFlow ckpts")
+    predict_parser.add_argument("--out_dir",
+                        type=str,
+                        required=True,
+                        help=("Path to directory in which validation"
+                              " scores are."))
+
+    args = parser.parse_args(sys.argv[1:])
+
+    print(args.subparser_name)
+
+    if args.subparser_name == "train":
+        _run_train(args)
+
+    if args.subparser_name == "predict":
+        _run_predict(args)
