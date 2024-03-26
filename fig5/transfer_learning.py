@@ -28,6 +28,7 @@ import tensorflow as tf
 IMG_CHANS = 3
 IMG_PX_NUM = 128
 WEIGHTS = "imagenet"
+INTERPOLATION="bilinear"
 
 CLASS_ENCODING={
         "benign":"0",
@@ -118,10 +119,10 @@ def mk_models(l1_reg_constant, learning_rate):
                             tf.keras.applications.mobilenet.preprocess_input),
                 "inception_v3": (tf.keras.applications.inception_v3.InceptionV3,
                                 tf.keras.applications.inception_v3.preprocess_input),
-                "resnet50": (tf.keras.applications.resnet50.ResNet50,
-                            tf.keras.applications.resnet50.preprocess_input),
-                "nasnet": (tf.keras.applications.nasnet.NASNetMobile,
-                            tf.keras.applications.nasnet.preprocess_input),
+                #                "resnet50": (tf.keras.applications.resnet50.ResNet50,
+                #                            tf.keras.applications.resnet50.preprocess_input),
+                #                "nasnet": (tf.keras.applications.nasnet.NASNetMobile,
+                #                            tf.keras.applications.nasnet.preprocess_input),
                 "xception" : (tf.keras.applications.xception.Xception,
                             tf.keras.applications.xception.preprocess_input)
             }
@@ -136,6 +137,7 @@ def _run_train(args):
             shuffle=True,
             batch_size=32,
             labels="inferred",
+            interpolation=INTERPOLATION,
             label_mode="binary",
             image_size=(IMG_PX_NUM,IMG_PX_NUM),
             seed=args.seed)
@@ -144,7 +146,11 @@ def _run_train(args):
         os.mkdir(args.ckpt_dir)
 
     with open(os.path.join(args.ckpt_dir, "train_pars.json"), "w") as fout:
-        json.dump(args.__dict__, fout, indent=2)
+        parameters = args.__dict__.copy()
+        parameters["img_px_num"] = IMG_PX_NUM
+        parameters["img_chans"] = IMG_CHANS
+        parameters["weights"] = WEIGHTS
+        json.dump(parameters, fout, indent=2)
 
 
     for model_name, model in mk_models(args.l1_reg_constant, args.learning_rate):
@@ -170,6 +176,7 @@ def _run_predict(args):
 
     model_file_names = glob.glob(os.path.join(args.ckpt_dir,
                                               "*.h5"))
+    img_size = (train_pars["img_px_num"], train_pars["img_px_num"])
 
     model_file_names.sort()
 
@@ -179,43 +186,36 @@ def _run_predict(args):
     # checkpoint files have model name 
     # embedded, therefore a simple search is sufficient
 
-    print("loading model weights")
     for model_file_name in model_file_names:
         for mname, model in models:
 
-            if re.match(mname, model_file_name) is None:
+            if re.search(mname, model_file_name) is None:
                 continue
 
+            print(f"loading {mname} weights")
             model.load_weights(model_file_name)
             break
-
-    with open(args.validate_set_metadata, "r") as fin:
-        for total_lines, tline in enumerate(fin):
-            pass
 
     if not os.path.exists(args.out_dir):
         os.mkdir(args.out_dir)
 
     print("read in image set")
+    positive_files = glob.glob(os.path.join(args.positive_dir,'*.jpeg'))
+    negative_files = glob.glob(os.path.join(args.negative_dir, "*.jpeg"))
+
+    all_files = positive_files + negative_files
+    sample_class = np.zeros(len(all_files))
+    sample_class[:len(positive_files)] = 1.
+
     images = []
-    sample_class = []
     sample_label = []
 
-    resize = tf.keras.layers.Resizing(IMG_PX_NUM, IMG_PX_NUM)
+    for file_name in all_files:
+        sample_label.append(os.path.basename(file_name))
 
-    with open(args.validate_set_metadata, "r") as fin:
-
-        for i, tline in enumerate(fin):
-            tline = tline.strip()
-            tline = tline.split('\t')
-            tline[1] = CLASS_ENCODING[tline[1]]
-
-            img_fname = os.path.join(args.validate_dir,
-                                     f"{tline[0]}.jpeg")
-
-            images.append(resize(tf.image.decode_jpeg(tf.io.read_file(img_fname))))
-            sample_class.append(tline[1])
-            sample_label.append(tline[0])
+        images.append(tf.keras.utils.load_img(file_name,
+                                               target_size=img_size,
+                                               interpolation=INTERPOLATION))
 
     images = np.array(images)
     predictions = np.zeros(shape=(images.shape[0], len(models)))
@@ -227,8 +227,8 @@ def _run_predict(args):
     for mname, model in models:
         predictions[:,i] = model.predict(images,
                                          verbose=0).squeeze()
-        progress_bar(i, len(models))
         i += 1
+        progress_bar(i, len(models))
 
     predictions = predictions.astype(str)
 
@@ -285,16 +285,14 @@ if __name__ == "__main__":
 
 
     predict_parser = subparsers.add_parser("predict")
-    predict_parser.add_argument("--validate_dir",
+    predict_parser.add_argument("--positive_dir",
                         type=str,
                         required=True,
-                        help="Path to directory containing validation data.")
-
-    predict_parser.add_argument("--validate_set_metadata",
+                        help="Directory of positive class samples")
+    predict_parser.add_argument("--negative_dir",
                         type=str,
                         required=True,
-                        help=("Path to validation set images labels and"
-                              " class"))
+                        help="Directory of negative class samples")
     predict_parser.add_argument("--ckpt_dir",
                                 type=str,
                                 required=True,
