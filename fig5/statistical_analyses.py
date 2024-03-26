@@ -4,9 +4,8 @@
 By: Robert Vogel
 
 
-Apply Umoca, wisdom-of-crowds, best individual, 
-and Smoca, to data that
-conforms to the data 
+Apply Wisdom-of-crowds, Smoca, Smoca-greedy,
+and each base classifier
 """
 
 import sys
@@ -25,7 +24,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__),
 import utils
 
 
-METHOD_REGEX = "^m?M?odel_[0-9]$"
+METHOD_REGEX = "^m?M?odel_[0-9]{2}$"
 
 # Set global parameters
 

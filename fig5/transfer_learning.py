@@ -17,9 +17,11 @@ and shared by Google under the Apache 2.0 License.
 
 import sys
 import os
+import json
 import argparse
 import glob
 import re
+import numpy as np
 import tensorflow as tf
 
 
@@ -32,7 +34,8 @@ CLASS_ENCODING={
         "malignant":"1"
         }
 
-def mk_model(keras_base_model, base_model_preprocessing):
+def mk_model(keras_base_model, base_model_preprocessing,
+             l1_reg_constant,learning_rate):
     """Make model with preprocessing and classification.
 
     Args:
@@ -40,6 +43,9 @@ def mk_model(keras_base_model, base_model_preprocessing):
         base_model_preprocessing: 
             keras provided tools for correctly preprocessing
             data according to a specific model
+        l1_reg_constant: (float)
+            postive float of l1 regularization constant applied to
+            bias and weights
 
     Returns:
         tf.keras.Model instance with preprocessing,
@@ -57,31 +63,38 @@ def mk_model(keras_base_model, base_model_preprocessing):
     keras_base_model.trainable=False
 
     # my custom layers
-    resize = tf.keras.layers.Resizing(IMG_PX_NUM, IMG_PX_NUM)
-
     data_augmentation = tf.keras.Sequential([
-        tf.keras.layers.RandomFlip("horizontal_and_vertical"),
+        tf.keras.layers.RandomFlip("horizontal"),
         tf.keras.layers.RandomRotation(0.2),
-        tf.keras.layers.RandomTranslation(0.1, 0.1, fill_mode="reflect")
         ])
+
+
+    l1_reg_bias = tf.keras.regularizers.L1(l1_reg_constant)
+    l1_reg_kernel = tf.keras.regularizers.L1(l1_reg_constant)
 
     inference = tf.keras.Sequential([
         tf.keras.layers.GlobalAveragePooling2D(),
-        tf.keras.layers.Dense(1, activation="sigmoid")
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(1,
+                    activation="sigmoid",
+                    kernel_regularizer=l1_reg_kernel,
+                    bias_regularizer=l1_reg_bias)
         ])
 
 
-    inputs = tf.keras.Input(shape=(None, None, IMG_CHANS))
-    x = resize(inputs)
+    inputs = tf.keras.Input(shape=(None,None, IMG_CHANS))
+    x = data_augmentation(inputs)
     x = base_model_preprocessing(x) 
-    x = data_augmentation(x)
     x = keras_base_model(x, training=False)
     outputs = inference(x)
 
     base_model = tf.keras.Model(inputs, outputs)
 
-    base_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
-                       loss=tf.keras.losses.BinaryCrossentropy())
+    base_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+                       loss=tf.keras.losses.BinaryCrossentropy(),
+                       metrics=[tf.keras.metrics.BinaryAccuracy(threshold=0.5,
+                                                               name='accuracy'),
+                                tf.keras.metrics.AUC(name='auc')])
     return base_model
 
 
@@ -99,7 +112,7 @@ def progress_bar(iter_num, total_iters, total_chars=50):
           end = print_end)
 
 
-def mk_models():
+def mk_models(l1_reg_constant, learning_rate):
     models = {
                 "mobilenet": (tf.keras.applications.mobilenet.MobileNet,
                             tf.keras.applications.mobilenet.preprocess_input),
@@ -109,30 +122,34 @@ def mk_models():
                             tf.keras.applications.resnet50.preprocess_input),
                 "nasnet": (tf.keras.applications.nasnet.NASNetMobile,
                             tf.keras.applications.nasnet.preprocess_input),
-                "vgg19": (tf.keras.applications.vgg19.VGG19,
-                            tf.keras.applications.vgg19.preprocess_input),
                 "xception" : (tf.keras.applications.xception.Xception,
                             tf.keras.applications.xception.preprocess_input)
             }
 
     for key, val in models.items():
-        yield key, mk_model(*val)
+        yield key, mk_model(*val, l1_reg_constant, learning_rate)
 
 
 def _run_train(args):
     data = tf.keras.utils.image_dataset_from_directory(
             args.train_dir,
+            shuffle=True,
+            batch_size=32,
             labels="inferred",
             label_mode="binary",
+            image_size=(IMG_PX_NUM,IMG_PX_NUM),
             seed=args.seed)
 
-    ckpt_dir = "checkpoints"
-    for model_name, model in mk_models():
+    if not os.path.exists(args.ckpt_dir):
+        os.mkdir(args.ckpt_dir)
 
-        if not os.path.exists(ckpt_dir):
-            os.mkdir(ckpt_dir)
+    with open(os.path.join(args.ckpt_dir, "train_pars.json"), "w") as fout:
+        json.dump(args.__dict__, fout, indent=2)
 
-        ckpt_fname = os.path.join(ckpt_dir, f"cpkt_{model_name}.weights.h5")
+
+    for model_name, model in mk_models(args.l1_reg_constant, args.learning_rate):
+
+        ckpt_fname = os.path.join(args.ckpt_dir, f"cpkt_{model_name}.weights.h5")
 
         ckpt_callback = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_fname,
                                                          save_weights_only=True,
@@ -148,16 +165,21 @@ def _run_train(args):
 def _run_predict(args):
     # load models and weights
 
+    with open(os.path.join(args.ckpt_dir, "train_pars.json"), "r") as fid:
+        train_pars = json.load(fid)
+
     model_file_names = glob.glob(os.path.join(args.ckpt_dir,
                                               "*.h5"))
 
     model_file_names.sort()
 
-    models = list(mk_models())
+    models = list(mk_models(train_pars["l1_reg_constant"],
+                            train_pars["learning_rate"]))
 
     # checkpoint files have model name 
     # embedded, therefore a simple search is sufficient
 
+    print("loading model weights")
     for model_file_name in model_file_names:
         for mname, model in models:
 
@@ -171,20 +193,19 @@ def _run_predict(args):
         for total_lines, tline in enumerate(fin):
             pass
 
-    with (open(os.path.join(args.out_dir,
-                f"sample_scores.csv"), "w") as fout,
-          open(args.validate_set_metadata, "r") as fin):
+    if not os.path.exists(args.out_dir):
+        os.mkdir(args.out_dir)
 
-        header = ["sample_id", "class"]
+    print("read in image set")
+    images = []
+    sample_class = []
+    sample_label = []
 
-        for i in range(len(models)):
-            header.append(f"model_{i}")
+    resize = tf.keras.layers.Resizing(IMG_PX_NUM, IMG_PX_NUM)
 
-        fout.write(','.join(header))
+    with open(args.validate_set_metadata, "r") as fin:
 
         for i, tline in enumerate(fin):
-            progress_bar(i, total_lines)
-
             tline = tline.strip()
             tline = tline.split('\t')
             tline[1] = CLASS_ENCODING[tline[1]]
@@ -192,15 +213,41 @@ def _run_predict(args):
             img_fname = os.path.join(args.validate_dir,
                                      f"{tline[0]}.jpeg")
 
-            img = tf.image.decode_jpeg(tf.io.read_file(img_fname))
-            img = tf.reshape(img, (1, *img.shape))
+            images.append(resize(tf.image.decode_jpeg(tf.io.read_file(img_fname))))
+            sample_class.append(tline[1])
+            sample_label.append(tline[0])
 
-            for _, model in models:
-                tmp = model(img, training=False).numpy()
-                tline.append(str(tmp.squeeze()))
+    images = np.array(images)
+    predictions = np.zeros(shape=(images.shape[0], len(models)))
 
-            tline = ','.join(tline)
-            fout.write(f"\n{tline}")
+    print("running predictions")
+
+    i = 0
+    progress_bar(i, len(models))
+    for mname, model in models:
+        predictions[:,i] = model.predict(images,
+                                         verbose=0).squeeze()
+        progress_bar(i, len(models))
+        i += 1
+
+    predictions = predictions.astype(str)
+
+
+    str_out = ""
+    for k in range(predictions.shape[0]):
+        str_out += f'\n{sample_label[k]},{sample_class[k]},'
+        str_out += ','.join(predictions[k,:])
+
+
+    print("writing to file")
+    with open(os.path.join(args.out_dir, "sample_scores.csv"),"w") as fout:
+        header = ["sample_id", "class"]
+        for i in range(len(models)):
+            header.append(f"model_{i+1:02d}")
+
+        fout.write(','.join(header))
+
+        fout.write(str_out)
 
 
 if __name__ == "__main__":
@@ -219,10 +266,22 @@ if __name__ == "__main__":
                         type=int,
                         default=42,
                         help="Seed for random number generation.")
+    train_parser.add_argument("--l1_reg_constant",
+                              type=float,
+                              default=0.01,
+                              help="Set regularization constant during training.")
     train_parser.add_argument("--epochs",
                                type=int,
                                default=10,
                                help="Number of epochs for training")
+    train_parser.add_argument("--ckpt_dir",
+                              type=str,
+                              default="checkpoints",
+                              help="Name of directory to store model weights")
+    train_parser.add_argument("--learning_rate",
+                                type=float,
+                                default=0.0001,
+                                help="Learning rate")
 
 
     predict_parser = subparsers.add_parser("predict")
