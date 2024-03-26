@@ -115,16 +115,18 @@ def progress_bar(iter_num, total_iters, total_chars=50):
 
 def mk_models(l1_reg_constant, learning_rate):
     models = {
-                "mobilenet": (tf.keras.applications.mobilenet.MobileNet,
-                            tf.keras.applications.mobilenet.preprocess_input),
-                "inception_v3": (tf.keras.applications.inception_v3.InceptionV3,
-                                tf.keras.applications.inception_v3.preprocess_input),
-                #                "resnet50": (tf.keras.applications.resnet50.ResNet50,
-                #                            tf.keras.applications.resnet50.preprocess_input),
-                #                "nasnet": (tf.keras.applications.nasnet.NASNetMobile,
-                #                            tf.keras.applications.nasnet.preprocess_input),
-                "xception" : (tf.keras.applications.xception.Xception,
-                            tf.keras.applications.xception.preprocess_input)
+             "mobilenet": (tf.keras.applications.mobilenet.MobileNet,
+                         tf.keras.applications.mobilenet.preprocess_input),
+             "inception_v3": (tf.keras.applications.inception_v3.InceptionV3,
+                             tf.keras.applications.inception_v3.preprocess_input),
+             "resnet50": (tf.keras.applications.resnet50.ResNet50,
+                         tf.keras.applications.resnet50.preprocess_input),
+             "nasnet": (tf.keras.applications.nasnet.NASNetMobile,
+                         tf.keras.applications.nasnet.preprocess_input),
+             "vgg19": (tf.keras.applications.vgg19.VGG19,
+                       tf.keras.applications.vgg19.preprocess_input),
+             "xception" : (tf.keras.applications.xception.Xception,
+                         tf.keras.applications.xception.preprocess_input)
             }
 
     for key, val in models.items():

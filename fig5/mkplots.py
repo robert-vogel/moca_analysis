@@ -54,17 +54,19 @@ def main(plot_dir, *stat_files):
 
     n_performance_sets = len(stat_files)
 
-    performance_measure_set = {}
+    performance_measure = []
+    performance_labels = []
     max_num_bars_per_performance_set = 0
 
     for fname in stat_files:
         cvdata, cl_labels= utils.read_cross_validation_file(fname,
                                                   row_idx_regex="k_folds")
 
-        performance_measure_set[fname2performance_name(fname)] = {
-                                            "mean":np.mean(cvdata, 0),
-                                            "sem":sem(cvdata, ax=0),
-                                            "labels":cl_labels}
+        performance_measure.append({"mean":np.mean(cvdata, 0),
+                                   "sem":sem(cvdata, ax=0),
+                                   "labels":cl_labels})
+        performance_labels.append(fname2performance_name(fname))
+
         if (cl_len := len(cl_labels)) > max_num_bars_per_performance_set:
             max_num_bars_per_performance_set = cl_len
         
@@ -73,7 +75,7 @@ def main(plot_dir, *stat_files):
     # while methods per data set occupy a total of 0.9
     # units.  Each bar is then 0.9 / number of
     # methods per data set
-    data_set_midpoints = np.arange(len(performance_measure_set))
+    data_set_midpoints = np.arange(len(performance_measure))
     data_height = 0.9
     bar_height = data_height / max_num_bars_per_performance_set
 
@@ -83,11 +85,10 @@ def main(plot_dir, *stat_files):
     fig, ax = plt.subplots(1,1,figsize=FIGSIZE)
 
     i_performance_set = 0
-    performance_measures = []
-    for data_name, data_values in performance_measure_set.items():
+    for data_name, data_values in zip(performance_labels,
+                                      performance_measure):
 
         data_midpoint = data_set_midpoints[i_performance_set]
-        performance_measures.append(data_name)
 
         for i, cls_name in enumerate(data_values["labels"]):
             label = None
@@ -108,7 +109,7 @@ def main(plot_dir, *stat_files):
     ax.legend(loc=LEGEND_LOC)
     ax.set_position(AX_POSIT)
 
-    ax.set_yticks(data_set_midpoints, labels=performance_measures,
+    ax.set_yticks(data_set_midpoints, labels=performance_labels,
                   fontsize=FONTSIZE)
     ax.set_xlabel("Performance", fontsize=FONTSIZE)
 

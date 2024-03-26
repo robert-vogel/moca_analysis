@@ -15,10 +15,10 @@ python transfer_learning.py train \
 
 
 python transfer_learning.py predict \
-    --validate_dir imgs_validate \
+    --positive_dir imgs_validate/malignant \
+    --negative_dir imgs_validate/benign \
     --ckpt_dir checkpoints \
-    --out_dir stats_out \
-    --validate_set_metadata data/validate_set.tsv
+    --out_dir stats_out
 
 
 python statistical_analyses.py \
