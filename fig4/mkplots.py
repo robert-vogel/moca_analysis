@@ -12,7 +12,7 @@ import utils
 FIGSIZE = (8,5.5)
 FONTSIZE = 15
 
-AX_POSIT = (0.45, 0.15, 0.5, 0.8)
+AX_POSIT = (0.52, 0.15, 0.455, 0.8)
 LEGEND_LOC = 0
 
 BAR_FRAC = 0.9
@@ -26,6 +26,9 @@ def _parse_args(args):
                         default="plots",
                         type=str,
                         help="Directory to print plots")
+    parser.add_argument("--challenge_name_map",
+                        type=str,
+                        help="Path to stat file that maps challenge names")
     parser.add_argument("stat_files",
                         type=str,
                         nargs='+',
@@ -41,10 +44,19 @@ def sem(data, ax=0):
     return (np.std(data, axis=ax)
             / np.sqrt(data.shape[ax]))
 
-def fname2data_name(fname):
-    return fname
 
-def main(out_dir, statistic,*stat_files):
+def get_challenge_names(fname):
+    output = {}
+    with open(fname, "r") as fid:
+        for tline in fid:
+            tline = tline.strip().split('\t')
+            output[tline[0]] = tline[1]
+    return output
+
+
+def main(out_dir, statistic, chal_file_names, *stat_files):
+
+    chal_names = get_challenge_names(chal_file_names)
 
     n_data_sets = len(stat_files)
 
@@ -55,7 +67,7 @@ def main(out_dir, statistic,*stat_files):
         cvdata, cl_labels= utils.read_cross_validation_file(fname,
                                                   row_idx_regex="k_folds")
 
-        data_set[fname2data_name(fname)] = {"mean":np.mean(cvdata, 0),
+        data_set[chal_names[fname]] = {"mean":np.mean(cvdata, 0),
                                             "sem":sem(cvdata, ax=0),
                                             "labels":cl_labels}
         if (cl_len := len(cl_labels)) > max_num_bars_per_data_set:
@@ -116,4 +128,5 @@ def main(out_dir, statistic,*stat_files):
 if __name__ == "__main__":
     args = _parse_args(sys.argv[1:])
 
-    main(args.o, args.statistic, *args.stat_files)
+    main(args.o, args.statistic, 
+         args.challenge_name_map, *args.stat_files)
