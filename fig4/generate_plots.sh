@@ -16,8 +16,10 @@ for fname in $(ls data/*.csv); do
     random_seed=$((random_seed + 10))
 done
 
+sleep 2
 
-# ls "${cv_result_dir}/*.csv" | xargs \
-#     python mkplots.py \
-#     -o plots \
-#     --statistic "AUC"
+ls "${cv_result_dir}/*.csv" | xargs \
+    python mkplots.py \
+    --challenge_name_map stats_out/challenge_names.tsv \
+    -o plots \
+    --statistic "AUC"
