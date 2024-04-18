@@ -20,8 +20,9 @@ s_k^{\text{GMM}} =
     - \boldsymbol{\mu}_1^T\boldsymbol{\Sigma}^{-1}_1\bigg) \mathbf{r}_k
 ```
 
-with \$\boldsymbol{\mu}_c\$ and \$\boldsymbol{\Sigma}^{-1}_c\$ are
-the conditional statistics of the methods given class label \$c\$.
+with \$\boldsymbol{\mu}_c\$ and \$\boldsymbol{\Sigma}_c\$ are
+the conditional mean and covariance statistics of the methods given class label
+\$c\$, respectively.
 This expression can be derived by Bayes' theorem and the Gaussian density function 
 \$f_c\$.
 
