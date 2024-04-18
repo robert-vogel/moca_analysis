@@ -4,8 +4,9 @@
 By: Robert Vogel
 
 
-Apply Umoca, Wisdom-of-crowds, and best base classifier
-(Best_BC) to our data sets.
+Apply Umoca, Wisdom-of-crowds, best base classifier
+(Best_BC), Gaussian mixture model with spherical,
+diagonal, and full covariance to our data sets.
 Plot the results in a directory named plots.
 """
 
@@ -31,7 +32,11 @@ import utils
 
 FONTSIZE=11
 FIGSIZE=(2.25, 1.87)
+FIGSIZE_BARCHART=(2.75, 1.87)
+
 POSITION=[0.325, 0.25, 0.625, 0.65]
+POSITION_BARCHART=[0.425, 0.25, 0.525, 0.65]
+
 CAPSIZE=3
 MS=5
 UMOCA_MAX_ITER=20000
@@ -175,6 +180,7 @@ def main(filename, seed, kfolds):
     cls_compare = [cls.Umoca(max_iter=UMOCA_MAX_ITER,
                              tol=UMOCA_TOL),
                    cls.Woc(),
+                   utils.Gmm("full"),
                    cls.BestBC()]
 
     auc, cl_labels = utils.performance_by_stratified_cv(data, labels,
@@ -183,7 +189,7 @@ def main(filename, seed, kfolds):
                                           kfolds=kfolds,
                                           seed=rng)
 
-    fig, ax = plt.subplots(1,1,figsize=FIGSIZE)
+    fig, ax = plt.subplots(1,1,figsize=FIGSIZE_BARCHART)
     ax.barh(np.arange(len(cl_labels)),
             np.mean(auc,0),
             xerr=np.std(auc,0) / np.sqrt(kfolds),
@@ -194,7 +200,7 @@ def main(filename, seed, kfolds):
 
     ax.set_xlabel("AUC", fontsize=FONTSIZE)
 
-    ax.set_position(POSITION)
+    ax.set_position(POSITION_BARCHART)
 
     fig.savefig(os.path.join("plots",
                              f"{plot_filename[0]}_auc.pdf"))

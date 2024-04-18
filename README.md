@@ -4,7 +4,7 @@
 In this repository, we share our data analysis
 scripts for making plots shown in the figure panels
 of our manuscript.  The plots were generated using
-the Python programming language v3.11.2, the
+the Python programming language v3.12.3, the
 packages located in `requirements.txt` file, and
 combined into figure panels using keynote.
 
