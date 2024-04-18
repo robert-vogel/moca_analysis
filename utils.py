@@ -47,7 +47,7 @@ class Gmm(cls.MocaABC):
 
     @property
     def name(self):
-        return f"Gmm-{self._cov_type}"
+        return "GMM"
 
 
     def fit(self, data):
