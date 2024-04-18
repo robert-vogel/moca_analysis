@@ -39,11 +39,16 @@ class Gmm(cls.MocaABC):
 
     is_supervised = False
 
-    def __init__(self):
+    def __init__(self, covariance_type):
         super().__init__()
-
+        self._cov_type = covariance_type
         self._gmm = GaussianMixture(n_components=2,
-                                    covariance_type="diag")
+                                    covariance_type=covariance_type)
+
+    @property
+    def name(self):
+        return f"Gmm-{self._cov_type}"
+
 
     def fit(self, data):
         self.M = data.shape[0]
@@ -73,6 +78,26 @@ class Gmm(cls.MocaABC):
             self._negative_idx = 1
             self.prevalence = self._gmm.weights_[self._pos_idx]
 
+    def _component_cov(self, comp_idx):
+        if self._cov_type == "spherical":
+
+            return self._gmm.covariances_[comp_idx] * np.eye(self.M)
+
+        elif self._cov_type == "tied":
+            
+            return self._gmm.covariances_
+
+        elif self._cov_type == "diag":
+
+            return np.diag(self._gmm.covariances_[comp_idx, :])
+
+        elif self._cov_type == "full":
+            
+            return self._gmm.covariances_[comp_idx, :, :]
+
+        raise ValueError("Specified covariance matrix typei"
+                         f" {self._cov_type} is not an option")
+
     def get_scores(self, data):
         if not stats.is_rank(data):
             raise ValueError
@@ -81,28 +106,36 @@ class Gmm(cls.MocaABC):
         # loop over samples
         for i in range(data.shape[1]):
 
-            # loop over features, o.k., because covariance
-            # is diagonal
+            # precision matrices
+            pmat_pos= np.linalg.inv(self._component_cov(self._pos_idx))
+            pmat_negative = np.linalg.inv(self._component_cov(self._negative_idx))
 
-            for j in range(data.shape[0]):
 
-                # quadratic term
-                s[i] += ((1/self._gmm.covariances_[self._pos_idx, j] 
-                       - 1/self._gmm.covariances_[self._negative_idx, j]) 
-                      * data[j,i]**2)
+            s[i] += (data[:, i] @ (pmat_pos - pmat_negative) @ data[:, i]
+                     + 2 * (self._gmm.means_[self._negative_idx,:] @ pmat_negative
+                            - self._gmm.means_[self._pos_idx, :] @ pmat_pos) 
+                     @ data[:, i])
 
-                # linear term
-                s[i] += (2*(self._gmm.means_[self._negative_idx, j]
-                            / self._gmm.covariances_[self._negative_idx,j]
-                            - self._gmm.means_[self._pos_idx, j]
-                            / self._gmm.covariances_[self._pos_idx, j])
-                         * data[j, i])
+
+#             for j in range(data.shape[0]):
+# 
+#                 # quadratic term
+#                 s[i] += ((1/self._gmm.covariances_[self._pos_idx, j] 
+#                        - 1/self._gmm.covariances_[self._negative_idx, j]) 
+#                       * data[j,i]**2)
+# 
+#                 # linear term
+#                 s[i] += (2*(self._gmm.means_[self._negative_idx, j]
+#                             / self._gmm.covariances_[self._negative_idx,j]
+#                             - self._gmm.means_[self._pos_idx, j]
+#                             / self._gmm.covariances_[self._pos_idx, j])
+#                          * data[j, i])
 
         return s
 
 
 def read_data(fname, method_regex,
-              datum_regex="^[+-]?[0-9]*\.?[0-9]*E?e?[+-]?[0-9]*$"):
+              datum_regex="^[+-]?[0-9]*\\.?[0-9]*E?e?[+-]?[0-9]*$"):
     """Load data under the assumed specification.
 
     Data specification:
@@ -219,7 +252,7 @@ def read_data(fname, method_regex,
 
 
 def read_cross_validation_file(fname, row_idx_regex="k_folds",
-              datum_regex="^[+-]?[0-9]*\.?[0-9]*E?e?[+-]?[0-9]*$"):
+              datum_regex="^[+-]?[0-9]*\\.?[0-9]*E?e?[+-]?[0-9]*$"):
     """Load data under the assumed specification.
 
     Stat file specification:
