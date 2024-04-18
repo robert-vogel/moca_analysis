@@ -14,13 +14,13 @@ The score \$s_k\$ of sample \$k\$ from the GMM was computed by:
 ```math
 s_k^{\text{GMM}} =
 \mathbf{r}_k^T
-    \bigg(\boldsymbol{\Sigma}^{-1}_1 - \boldsymbol{\Sigma}^{-1}0\bigg)
+    \bigg(\boldsymbol{\Sigma}^{-1}_1 - \boldsymbol{\Sigma}^{-1}_0\bigg)
     \mathbf{r}_k
 + 2 \bigg(\boldsymbol{\mu}_0^T\boldsymbol{\Sigma}^{-1}_0
     - \boldsymbol{\mu}_1^T\boldsymbol{\Sigma}^{-1}_1\bigg) \mathbf{r}_k
 ```
 
-with \$\boldsymbol{\mu}_c\$ and \$\boldsymbol{\Sigma}^2_c\$ are
+with \$\boldsymbol{\mu}_c\$ and \$\boldsymbol{\Sigma}^{-1}_c\$ are
 the conditional statistics of the methods given class label \$c\$.
 This expression can be derived by Bayes' theorem and the Gaussian density function 
 \$f_c\$.
