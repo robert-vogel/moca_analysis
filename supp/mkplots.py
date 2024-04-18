@@ -180,8 +180,6 @@ def main(filename, seed, kfolds):
     cls_compare = [cls.Umoca(max_iter=UMOCA_MAX_ITER,
                              tol=UMOCA_TOL),
                    cls.Woc(),
-                   utils.Gmm("spherical"),
-                   utils.Gmm("diag"),
                    utils.Gmm("full"),
                    cls.BestBC()]
 
