@@ -5,7 +5,7 @@ By: Robert Vogel
 
 
 Apply Umoca, wisdom-of-crowds, best individual, 
-and Smoca, to data that
+Smoca, and Smoca-greedy, to data that
 conforms to the data 
 """
 
@@ -68,10 +68,11 @@ def main(filename, seed, kfolds, out_dir):
     print(data.shape)
     
     # Perform statistical analyses
-    moca_cls = [cls.Umoca(max_iter=utils.UMOCA_MAX_ITER,
-                          tol=utils.UMOCA_TOL),
-                cls.Smoca(),
-                cls.Woc(),
+    moca_cls = [cls.Smoca(),
+                cls.Smoca(subset_select=None),
+                cls.Umoca(max_iter=utils.UMOCA_MAX_ITER,
+                          tol=utils.UMOCA_TOL), 
+                cls.Woc(is_supervised=True),
                 cls.BestBC(seed=rng)]
     moca_cls[2].is_supervised = True
 

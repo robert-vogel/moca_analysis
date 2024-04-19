@@ -116,26 +116,11 @@ class Gmm(cls.MocaABC):
                             - self._gmm.means_[self._pos_idx, :] @ pmat_pos) 
                      @ data[:, i])
 
-
-#             for j in range(data.shape[0]):
-# 
-#                 # quadratic term
-#                 s[i] += ((1/self._gmm.covariances_[self._pos_idx, j] 
-#                        - 1/self._gmm.covariances_[self._negative_idx, j]) 
-#                       * data[j,i]**2)
-# 
-#                 # linear term
-#                 s[i] += (2*(self._gmm.means_[self._negative_idx, j]
-#                             / self._gmm.covariances_[self._negative_idx,j]
-#                             - self._gmm.means_[self._pos_idx, j]
-#                             / self._gmm.covariances_[self._pos_idx, j])
-#                          * data[j, i])
-
         return s
 
 
 def read_data(fname, method_regex,
-              datum_regex="^[+-]?[0-9]*\\.?[0-9]*E?e?[+-]?[0-9]*$"):
+              datum_regex=r"^[+-]?[0-9]*\.?[0-9]*E?e?[+-]?[0-9]*$"):
     """Load data under the assumed specification.
 
     Data specification:
@@ -252,7 +237,7 @@ def read_data(fname, method_regex,
 
 
 def read_cross_validation_file(fname, row_idx_regex="k_folds",
-              datum_regex="^[+-]?[0-9]*\\.?[0-9]*E?e?[+-]?[0-9]*$"):
+              datum_regex=r"^[+-]?[0-9]*\.?[0-9]*E?e?[+-]?[0-9]*$"):
     """Load data under the assumed specification.
 
     Stat file specification:
