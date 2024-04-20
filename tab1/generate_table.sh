@@ -18,8 +18,8 @@ done
 
 sleep 2
 
-ls "${cv_result_dir}/*.csv" | xargs \
-    python mkplots.py \
+find "$cv_result_dir" -type f -ipath '*auc.csv' | xargs \
+    python mktable.py \
     --challenge_name_map stats_out/challenge_names.tsv \
-    -o plots \
+    -o tables \
     --statistic "AUC"
